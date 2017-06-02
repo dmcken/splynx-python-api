@@ -118,7 +118,7 @@ class SplynxApi:
      *@param param
      *@return array JSON results
   """
-  def _curl_process(self, method, url, param = []):#maybe called _request_process
+  def _request_process(self, method, url, param = []):#maybe called _request_process
       if self.debug:
           print "%s to %s\n"%(method, url)
           print param, "\n"
@@ -167,8 +167,7 @@ class SplynxApi:
       return urllib.urlencode(auth)
 
   def _getUrl(self, pth, Id=None):
-      l = self._url[-1]
-      url = self._url+pth if l == '/' else self._url+'/'+pth     
+      url = self._url+'api/'+self._version +'/'+pth
       if Id:
          url += '/'+str(Id)
       return url
@@ -180,7 +179,7 @@ class SplynxApi:
      *@param a list
   """
   def api_call_get(self, path, Id=None):
-      return self._curl_process('GET', self._getUrl(path, Id))
+      return self._request_process('GET', self._getUrl(path, Id))
     
   """
      *Send API call DELETE to Splynx API
@@ -189,7 +188,7 @@ class SplynxApi:
      *@return a list
   """
   def api_call_delete(self,path, Id=None):
-      return self._curl_process('DELETE', self._getUrl(path, Id))
+      return self._request_process('DELETE', self._getUrl(path, Id))
 
   """
      *Send API call POST to Splynx API
@@ -198,7 +197,7 @@ class SplynxApi:
      *@return a list 
   """
   def api_call_post(self, path, param):
-      return self._curl_process('POST', self._getUrl(path), param)
+      return self._request_process('POST', self._getUrl(path), param)
  
   """
      *Send API call PUT to Splynx API
@@ -208,4 +207,4 @@ class SplynxApi:
      *@return a list 
   """
   def api_call_put(self, path, Id, param):
-      return self._curl_process('PUT', self._getUrl(path, Id), param)
+      return self._request_process('PUT', self._getUrl(path, Id), param)
