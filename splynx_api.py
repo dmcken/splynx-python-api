@@ -118,7 +118,7 @@ class SplynxApi:
      *@param param
      *@return array JSON results
   """
-  def _request_process(self, method, url, param = []):#maybe called _request_process
+  def _request_process(self, method, url, param = []):
       if self.debug:
           print "%s to %s\n"%(method, url)
           print param, "\n"
