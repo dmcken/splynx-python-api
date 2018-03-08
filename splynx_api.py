@@ -6,7 +6,8 @@ import time
 import math
 import requests
 from requests import request
-import urllib
+import urllib3
+import sys
 
 """
    *Splynx API v. 1.0
@@ -85,6 +86,7 @@ class SplynxApi:
   @response_code.setter
   def response_code(self,value):
       self._response_code = value
+      
   @property
   def sash(self):
       return self._sash
@@ -98,8 +100,12 @@ class SplynxApi:
      *@return string hash
   """
   def _signature(self):
-      st = "%s%s"%(self._nonce_v, self._api_key)
-      hsh = hmac.new(self._api_secret, st, hashlib.sha256).hexdigest()
+      if sys.version_info >= (3,0) :
+          st = "%s%s"%(self._nonce_v, self._api_key)
+          hsh = hmac.new(bytes(self._api_secret,'latin-1'), bytes(st,'latin-1'), hashlib.sha256).hexdigest()      
+      else :
+          st = "%s%s"%(self._nonce_v, self._api_key)
+          hsh = hmac.new(self._api_secret, st, hashlib.sha256).hexdigest()
       return hsh.upper()
     
   """
@@ -109,7 +115,7 @@ class SplynxApi:
       t_now = datetime.now()
       self._nonce_v = round((time.mktime(t_now.timetuple()) + t_now.microsecond/1000000.0)*100)
       if self.debug:
-         print "nonce", self._nonce_v
+         print("nonce", self._nonce_v)
 
   """
      *Send request request to Splynx API
@@ -120,10 +126,10 @@ class SplynxApi:
   """
   def _request_process(self, method, url, param = []):
       if self.debug:
-          print "%s to %s\n"%(method, url)
-          print param, "\n"
+          print("%s to %s\n"%(method, url))
+          print(param, "\n")
       auth_str = self._make_auth()
-      print auth_str
+      print(auth_str)
       headers = {
                  "Authorization":"Splynx-EA ("+auth_str+")",
                  "user-agent":"Splynx Python API"+self._version
@@ -135,21 +141,21 @@ class SplynxApi:
             rs = request(method, url, headers = headers)
       except requests.RequestException as e:
              if self.debug:
-                print "response: ", e.response, '\n'
-                print "request: ", e.request, '\n'
+                print("response: ", e.response, '\n')
+                print("request: ", e.request, '\n')
                 return
       self.administrator_id = rs.headers.get('SpL-Administrator-Id') or self.administrator_id
       self.administrator_role = rs.headers.get('SpL-Administrator-Role') or self.administrator_role
       self._administrator_partner = rs.headers.get('SpL-Administrator-Partner') or self._administrator_partner
       self.response_code = rs.status_code
       if self.debug:
-         print 'Content: ',rs.content, '\n'
+         print('Content: ',rs.content, '\n')
       self.result = False
       if self.response_code == 200 or self._test_method.get(method) == self.response_code:
          self.result = True
       self.response = rs.json()
       if self.debug:
-         print "status code: %s  method: %s\n"%(self.response_code, method)
+         print("status code: %s  method: %s\n"%(self.response_code, method))
       return self.response
       
   """
@@ -163,8 +169,8 @@ class SplynxApi:
               'signature':self._signature(),
               'nonce':self._nonce_v}
       if self.sash != None:
-         auth['sash'] = self.sash
-      return urllib.urlencode(auth)
+         auth['sash'] = self.sash         
+      return urllib3.request.urlencode(auth)
 
   def _getUrl(self, pth, Id=None):
       url = self._url+'api/'+self._version +'/'+pth
