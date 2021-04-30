@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+
 import requests
-import urllib.request as req
+
+from .__exceptions import ApiCallError
+
 AUTH_TYPE_API_KEY = 'api_key'
 AUTH_TYPE_CUSTOMER = 'customer'
 AUTH_TYPE_SESSION = 'session'
@@ -38,24 +41,39 @@ class BaseRequest(ABC):
         self.__result = None
 
     def make_request(self, method: str, path: str, params: dict = None, content_type: str = 'application/json',
-                     skip_login: bool = False):
-        request_url = self.__create_url(path)
+                     skip_login: bool = False, entity_id=None):
+        request_url = self.__create_url(path, entity_id)
 
         method = method.lower()
         headers = self.__get_request_header(content_type, skip_login)
 
-        # TODO add error processing
-        if method == "put" or method == "post":
+        try:
             response = requests.request(method, request_url, headers=headers, json=params)
+        except requests.exceptions.RequestException as exception:
+            self.__response = {}
+            self.__result = False
+            raise ApiCallError("Error while make API call. Error: {}".format(str(exception)))
+
+        self.__process_response(response)
+        # todo debug, add token renew
+
+        return self.__result
+
+    def __create_url(self, path: str, entity_id=None) -> str:
+        request_url = self._splynx_domain + '/api/2.0/' + path.lstrip('/')
+
+        if entity_id is not None:
+            request_url = request_url.rstrip('/') + "/" + str(entity_id)
+
+        return request_url
+
+    def __process_response(self, response: requests.Response):
+        if not response.text:
+            self.__response = {}
         else:
-            response = requests.request(method, request_url, headers=headers)
+            self.__response = response.json()
 
-        self.__response = response.json()
         self.__result = self.__get_result_by_status_code(response)
-        # todo add response code, debug
-
-    def __create_url(self, path: str) -> str:
-        return self._splynx_domain + '/api/2.0/' + path.lstrip('/')
 
     @staticmethod
     def __get_result_by_status_code(response: requests.Response) -> bool:
@@ -94,6 +112,17 @@ class BaseRequest(ABC):
 
         self.auth_data = self.__response
         return True
+
+    def logout(self):
+        response = self.make_request("DELETE", self.TOKEN_URL, entity_id=self.__refresh_token)
+
+        self.__access_token = None
+        self.__access_token_expiration = None
+        self.__refresh_token = None
+        self.__refresh_token_expiration = None
+        self.__permissions = None
+
+        return response
 
     @abstractmethod
     def _auth_request_data(self) -> dict:

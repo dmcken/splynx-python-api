@@ -1,0 +1,2 @@
+class ApiCallError(IOError):
+    pass
