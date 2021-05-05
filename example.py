@@ -5,9 +5,9 @@ import json
 import splynx_api
 
 # set API variables
-api_url = 'https://mishchanchuk.dev.spl.splynx.rv.ua/'  # please set your Splynx URL
-key = "0b20629c11a9408ea640cb0ba2fdd402"  # please set your key
-secret = "485704f95505ee1f24f37d48156d3933"  # please set your secret
+api_url = 'https://splynx.url/'  # please set your Splynx URL
+key = "apikey"  # please set your key
+secret = "apisecret"  # please set your secret
 
 ApiUrlCust = "admin/customers/customer"  # API customers URL
 

@@ -1,6 +1,9 @@
+import hashlib
+import hmac
+import time
 from abc import ABC, abstractmethod
+from datetime import datetime
 from enum import Enum
-from time import time
 from urllib.parse import urlencode
 
 import requests
@@ -42,11 +45,11 @@ class BaseRequest(ABC):
         self.__response = None
         self.__result = None
 
-        self.__debug = debug
+        self._debug = debug
 
     def make_request(self, method: str, path: str, params: dict = None, content_type: str = 'application/json',
                      skip_login: bool = False, entity_id=None):
-        self._debug()
+        self._debug_message()
         request_url = self.__create_url(path, entity_id)
 
         method = method.lower()
@@ -72,8 +75,8 @@ class BaseRequest(ABC):
         return request_url
 
     def __do_requests(self, request_url: str, method: str, headers: dict, params: dict = None):
-        self._debug("{}: {}".format(method, request_url))
-        self._debug("Params: {}".format(str(params)))
+        self._debug_message("{}: {}".format(method, request_url))
+        self._debug_message("Params: {}".format(str(params)))
         if method == 'post' or method == 'put':
             return requests.request(method, request_url, headers=headers, json=params)
         else:
@@ -83,8 +86,8 @@ class BaseRequest(ABC):
             return requests.request(method, request_url, headers=headers)
 
     def __process_response(self, response: requests.Response):
-        self._debug("Response test: {}".format(response.text))
-        self._debug("Response code: {}".format(response.status_code))
+        self._debug_message("Response test: {}".format(response.text))
+        self._debug_message("Response code: {}".format(response.status_code))
 
         if not response.text:
             self.__response = {}
@@ -123,7 +126,7 @@ class BaseRequest(ABC):
         return "Splynx-EA (access_token=" + str(self.__access_token) + ")"
 
     def __renew_tokens(self):
-        if self.__refresh_token_expiration > time() + 5 > self.__access_token_expiration:
+        if self.__refresh_token_expiration > time.time() + 5 > self.__access_token_expiration:
             result = self.make_request("GET", self.TOKEN_URL, entity_id=self.__refresh_token, skip_login=True)
             if result:
                 return False
@@ -181,14 +184,14 @@ class BaseRequest(ABC):
 
     @property
     def debug(self):
-        return self.__debug
+        return self._debug
 
     @debug.setter
     def debug(self, value: bool):
-        self.__debug = value
+        self._debug = value
 
-    def _debug(self, message: str = ""):
-        if self.__debug:
+    def _debug_message(self, message: str = ""):
+        if self.debug:
             print(message)
 
 
@@ -221,13 +224,26 @@ class AdministratorRequest(PersonRequest):
 
 class ApiKeyRequest(BaseRequest):
     def __init__(self, splynx_domain: str, api_key: str, api_secret: str, debug: bool = False):
+        super().__init__(splynx_domain, debug=debug)
         self._api_key = api_key
         self._api_secret = api_secret
-        super().__init__(splynx_domain, debug=debug)
+        self.__nonce_v = None
+        self.__nonce()
 
     def _auth_request_data(self) -> dict:
         return {
             'auth_type': AUTH_TYPE_API_KEY,
-            'api_key': self._api_key,
-            'signature': self._api_secret,  # todo make signature
+            'nonce': self.__nonce_v,
+            'key': self._api_key,
+            'signature': self.__signature(),
         }
+
+    def __signature(self) -> str:
+        st = "%s%s" % (self.__nonce_v, self._api_key)
+        signature_hash = hmac.new(bytes(self._api_secret, 'latin-1'), bytes(st, 'latin-1'), hashlib.sha256).hexdigest()
+        return signature_hash.upper()
+
+    def __nonce(self):
+        time_now = datetime.now()
+        self.__nonce_v = round((time.mktime(time_now.timetuple()) + time_now.microsecond / 1000000.0) * 100)
+        self._debug_message("Nonce: {}".format(self.__nonce_v))
