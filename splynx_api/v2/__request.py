@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from urllib.parse import urlencode
 
 import requests
 
@@ -25,7 +26,7 @@ class BaseRequest(ABC):
 
     TOKEN_URL = 'admin/auth/tokens'
 
-    def __init__(self, splynx_domain: str):
+    def __init__(self, splynx_domain: str, debug: bool = False):
         if not splynx_domain:
             raise ValueError("You must enter Splynx url")
 
@@ -40,22 +41,25 @@ class BaseRequest(ABC):
         self.__response = None
         self.__result = None
 
+        self.__debug = debug
+
     def make_request(self, method: str, path: str, params: dict = None, content_type: str = 'application/json',
                      skip_login: bool = False, entity_id=None):
+        self._debug()
         request_url = self.__create_url(path, entity_id)
 
         method = method.lower()
         headers = self.__get_request_header(content_type, skip_login)
 
         try:
-            response = requests.request(method, request_url, headers=headers, json=params)
+            response = self.__do_requests(request_url, method, headers, params)
         except requests.exceptions.RequestException as exception:
             self.__response = {}
             self.__result = False
             raise ApiCallError("Error while make API call. Error: {}".format(str(exception)))
 
         self.__process_response(response)
-        # todo debug, add token renew
+        # todo add token renew
 
         return self.__result
 
@@ -67,7 +71,21 @@ class BaseRequest(ABC):
 
         return request_url
 
+    def __do_requests(self, request_url: str, method: str, headers: dict, params: dict = None):
+        self._debug("{}: {}".format(method, request_url))
+        self._debug("Params: {}".format(str(params)))
+        if method == 'post' or method == 'put':
+            return requests.request(method, request_url, headers=headers, json=params)
+        else:
+            if params:
+                request_url = request_url + "?" + urlencode(params)
+
+            return requests.request(method, request_url, headers=headers)
+
     def __process_response(self, response: requests.Response):
+        self._debug("Response test: {}".format(response.text))
+        self._debug("Response code: {}".format(response.status_code))
+
         if not response.text:
             self.__response = {}
         else:
@@ -154,12 +172,24 @@ class BaseRequest(ABC):
     def response(self):
         return self.__response
 
+    @property
+    def debug(self):
+        return self.__debug
+
+    @debug.setter
+    def debug(self, value: bool):
+        self.__debug = value
+
+    def _debug(self, message: str = ""):
+        if self.__debug:
+            print(message)
+
 
 class PersonRequest(BaseRequest):
-    def __init__(self, splynx_domain: str, login: str, password: str):
+    def __init__(self, splynx_domain: str, login: str, password: str, debug: bool = False):
         self._login = login
         self._password = password
-        super().__init__(splynx_domain)
+        super().__init__(splynx_domain, debug=debug)
 
     def _auth_request_data(self) -> dict:
         return {
@@ -183,10 +213,10 @@ class AdministratorRequest(PersonRequest):
 
 
 class ApiKeyRequest(BaseRequest):
-    def __init__(self, splynx_domain: str, api_key: str, api_secret: str):
+    def __init__(self, splynx_domain: str, api_key: str, api_secret: str, debug: bool = False):
         self._api_key = api_key
         self._api_secret = api_secret
-        super().__init__(splynx_domain)
+        super().__init__(splynx_domain, debug=debug)
 
     def _auth_request_data(self) -> dict:
         return {
