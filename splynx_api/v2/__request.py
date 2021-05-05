@@ -194,6 +194,24 @@ class BaseRequest(ABC):
         if self.debug:
             print(message)
 
+    def api_call_get(self, path: str, entity_id=None, params: dict = None):
+        return self.make_request('get', path, params=params, entity_id=entity_id)
+
+    def api_call_delete(self, path: str, entity_id=None):
+        return self.make_request('delete', path, entity_id=entity_id)
+
+    def api_call_post(self, path: str, params: dict = None):
+        return self.make_request('post', path, params)
+
+    def api_call_put(self, path: str, params: dict = None):
+        return self.make_request('put', path, params)
+
+    def api_call_options(self, path: str):
+        return self.make_request('options', path)
+
+    def api_call_head(self, path: str):
+        return self.make_request('head', path)
+
 
 class PersonRequest(BaseRequest):
     def __init__(self, splynx_domain: str, login: str, password: str, debug: bool = False):
@@ -233,14 +251,15 @@ class ApiKeyRequest(BaseRequest):
     def _auth_request_data(self) -> dict:
         return {
             'auth_type': AUTH_TYPE_API_KEY,
-            'nonce': self.__nonce_v,
             'key': self._api_key,
+            'nonce': self.__nonce_v,
             'signature': self.__signature(),
         }
 
     def __signature(self) -> str:
         st = "%s%s" % (self.__nonce_v, self._api_key)
-        signature_hash = hmac.new(bytes(self._api_secret, 'latin-1'), bytes(st, 'latin-1'), hashlib.sha256).hexdigest()
+        signature_hash = hmac.new(bytes(self._api_secret, 'latin-1'), bytes(st, 'latin-1'),
+                                  hashlib.sha256).hexdigest()
         return signature_hash.upper()
 
     def __nonce(self):
