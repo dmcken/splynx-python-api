@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from time import time
 from urllib.parse import urlencode
 
 import requests
@@ -59,7 +60,6 @@ class BaseRequest(ABC):
             raise ApiCallError("Error while make API call. Error: {}".format(str(exception)))
 
         self.__process_response(response)
-        # todo add token renew
 
         return self.__result
 
@@ -121,6 +121,13 @@ class BaseRequest(ABC):
             self.login()
 
         return "Splynx-EA (access_token=" + str(self.__access_token) + ")"
+
+    def __renew_tokens(self):
+        if self.__refresh_token_expiration > time() + 5 > self.__access_token_expiration:
+            result = self.make_request("GET", self.TOKEN_URL, entity_id=self.__refresh_token, skip_login=True)
+            if result:
+                return False
+            self.auth_data = self.__response
 
     def login(self):
         self.make_request("POST", self.TOKEN_URL, params=self._auth_request_data(), skip_login=True)
