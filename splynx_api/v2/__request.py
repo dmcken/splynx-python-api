@@ -49,6 +49,24 @@ class BaseRequest(ABC):
 
     def make_request(self, method: str, path: str, params: dict = None, content_type: str = 'application/json',
                      skip_login: bool = False, entity_id=None):
+        """
+        Method for make different http requests types.
+
+        Method automatically login on system or you can do it manually.
+        For manually usage you can use method login or set auth tokens from local storage.
+
+        Usage:
+            TODO
+
+        :param str method: HTTP request methods names. Available methods: get, post, put, delete, option, head.
+        :param str path: API path. See Splynx API doc https://splynx.docs.apiary.io/ .
+        :param dict params: API call params.
+        :param content_type: API call content type. Default value: `application/json`.
+        :param skip_login: Flag for skipping authorization header.
+        :param entity_id: Id of entity. For example: customer id.
+
+        :return bool: api call result
+        """
         self._debug_message()
         request_url = self.__create_url(path, entity_id)
 
@@ -133,6 +151,19 @@ class BaseRequest(ABC):
             self.auth_data = self.__response
 
     def login(self):
+        """
+        Method for authorize on Splynx system API.
+
+        This method make api call to Splynx system and generate API tokens.
+        After you can save token into your storage an use in future, but this tokens has expiration time.
+        See more details about Splynx API authorization on
+        page: https://splynx.docs.apiary.io/#introduction/authentication/by-access-token
+
+        Usage:
+            TODO
+
+        :return bool: Result of authorization.
+        """
         self.make_request("POST", self.TOKEN_URL, params=self._auth_request_data(), skip_login=True)
 
         if self.__result is False:
@@ -142,6 +173,18 @@ class BaseRequest(ABC):
         return True
 
     def logout(self):
+        """
+        Method for authorize on Splynx system API.
+
+        This method make api call to Splynx system and deactivate API token.
+        See more details about Splynx API authorization on
+        page: https://splynx.docs.apiary.io/#introduction/authentication/by-access-token
+
+        Usage:
+            TODO
+
+        :return bool: Deactivate token result.
+        """
         response = self.make_request("DELETE", self.TOKEN_URL, entity_id=self.__refresh_token)
 
         self.__access_token = None
