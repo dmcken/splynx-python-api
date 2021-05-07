@@ -3,7 +3,6 @@ import hmac
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from enum import Enum
 from urllib.parse import urlencode
 
 import requests
@@ -16,13 +15,6 @@ AUTH_TYPE_SESSION = 'session'
 AUTH_TYPE_ADMIN = 'admin'
 
 
-class RequestMethods(Enum):
-    METHOD_GET = 'get'
-    METHOD_POST = 'post'
-    METHOD_PUT = 'put'
-    METHOD_delete = 'delete'
-
-
 class BaseRequest(ABC):
     """
     Base class for implement external interface for all API auth types requests.
@@ -31,6 +23,11 @@ class BaseRequest(ABC):
     TOKEN_URL = 'admin/auth/tokens'
 
     def __init__(self, splynx_domain: str, debug: bool = False):
+        """
+        Init method for Splynx API class
+        :param str splynx_domain: Splynx API domain. Example: https://splynx.domain.com
+        :param bool debug: flag for enable debug message.
+        """
         if not splynx_domain:
             raise ValueError("You must enter Splynx url")
 
@@ -234,29 +231,74 @@ class BaseRequest(ABC):
         self._debug = value
 
     def _debug_message(self, message: str = ""):
+        """
+        Print debug message if debug enabled
+        :param message:
+        :return:
+        """
         if self.debug:
             print(message)
 
     def api_call_get(self, path: str, entity_id=None, params: dict = None):
+        """
+        Method for make GET requests to Splynx API
+        :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :param int|str entity_id:
+        :param dict params:
+        :return:
+        """
         return self.make_request('get', path, params=params, entity_id=entity_id)
 
-    def api_call_delete(self, path: str, entity_id=None):
-        return self.make_request('delete', path, entity_id=entity_id)
+    def api_call_delete(self, path: str, entity_id=None, params: dict = None):
+        """
+        Method for make DELETE requests to Splynx API
+        :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :param int|str entity_id:
+        :param dict params:
+        :return:
+        """
+        return self.make_request('delete', path, entity_id=entity_id, params=params)
 
     def api_call_post(self, path: str, params: dict = None):
+        """
+        Method for make POST requests to Splynx API
+        :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :param dict params:
+        :return:
+        """
         return self.make_request('post', path, params)
 
     def api_call_put(self, path: str, params: dict = None):
+        """
+        Method for make PUT requests to Splynx API
+        :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :param dict params:
+        :return:
+        """
         return self.make_request('put', path, params)
 
     def api_call_options(self, path: str):
+        """
+        Method for make OPTIONS requests to Splynx API
+        :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :return:
+        """
         return self.make_request('options', path)
 
     def api_call_head(self, path: str):
+        """
+        Method for make HEAD requests to Splynx API
+        :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :return:
+        """
         return self.make_request('head', path)
 
 
 class PersonRequest(BaseRequest):
+    """
+    Base class for realize logic for auth as person on Splynx as admin or customer.
+    """
+
     def __init__(self, splynx_domain: str, login: str, password: str, debug: bool = False):
         self._login = login
         self._password = password
@@ -270,6 +312,15 @@ class PersonRequest(BaseRequest):
 
 
 class CustomerRequest(PersonRequest):
+    """
+    Splynx API helper with auth as customer.
+
+    For authorize need use customer login and password.
+
+    Usage:
+        TODO
+    """
+
     def _auth_request_data(self) -> dict:
         auth_data = super()._auth_request_data()
         auth_data['auth_type'] = AUTH_TYPE_CUSTOMER
@@ -277,6 +328,15 @@ class CustomerRequest(PersonRequest):
 
 
 class AdministratorRequest(PersonRequest):
+    """
+    Splynx API helper with auth as administrator.
+
+    For authorize need use customer login and password.
+
+    Usage:
+        TODO
+    """
+
     def _auth_request_data(self) -> dict:
         auth_data = super()._auth_request_data()
         auth_data['auth_type'] = AUTH_TYPE_ADMIN
@@ -284,6 +344,13 @@ class AdministratorRequest(PersonRequest):
 
 
 class ApiKeyRequest(BaseRequest):
+    """
+    Splynx API helper with auth with API key.
+
+    Usage:
+        TODO
+    """
+
     def __init__(self, splynx_domain: str, api_key: str, api_secret: str, debug: bool = False):
         super().__init__(splynx_domain, debug=debug)
         self._api_key = api_key
