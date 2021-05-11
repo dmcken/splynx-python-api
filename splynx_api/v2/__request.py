@@ -268,14 +268,15 @@ class BaseRequest(ABC):
         """
         return self.make_request('post', path, params)
 
-    def api_call_put(self, path: str, params: dict = None):
+    def api_call_put(self, path: str, entity_id, params: dict):
         """
         Method for make PUT requests to Splynx API
         :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :param int|str entity_id:
         :param dict params:
         :return:
         """
-        return self.make_request('put', path, params)
+        return self.make_request('put', path, entity_id=entity_id, params=params)
 
     def api_call_options(self, path: str):
         """
@@ -285,13 +286,14 @@ class BaseRequest(ABC):
         """
         return self.make_request('options', path)
 
-    def api_call_head(self, path: str):
+    def api_call_head(self, path: str, params: dict = None):
         """
         Method for make HEAD requests to Splynx API
         :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
+        :param dict params: search requests
         :return:
         """
-        return self.make_request('head', path)
+        return self.make_request('head', path, params=params)
 
 
 class PersonRequest(BaseRequest):
@@ -376,3 +378,6 @@ class ApiKeyRequest(BaseRequest):
         time_now = datetime.now()
         self.__nonce_v = round((time.mktime(time_now.timetuple()) + time_now.microsecond / 1000000.0) * 100)
         self._debug_message("Nonce: {}".format(self.__nonce_v))
+
+# TODO make session authorization
+# TODO entity_id union type hinting
