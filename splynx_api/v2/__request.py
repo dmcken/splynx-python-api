@@ -22,11 +22,12 @@ class BaseRequest(ABC):
 
     TOKEN_URL = 'admin/auth/tokens'
 
-    def __init__(self, splynx_domain: str, debug: bool = False):
+    def __init__(self, splynx_domain: str, debug: bool = False, auth_data: dict = None):
         """
         Init method for Splynx API class
         :param str splynx_domain: Splynx API domain. Example: https://splynx.domain.com
         :param bool debug: flag for enable debug message.
+        :param dict auth_data: saved tokens for auth.
         """
         if not splynx_domain:
             raise ValueError("You must enter Splynx url")
@@ -43,6 +44,7 @@ class BaseRequest(ABC):
         self.__result = None
 
         self._debug = debug
+        self.auth_data = auth_data
 
     def make_request(self, method: str, path: str, params: dict = None, content_type: str = 'application/json',
                      skip_login: bool = False, entity_id=None):
@@ -92,6 +94,9 @@ class BaseRequest(ABC):
     def __do_requests(self, request_url: str, method: str, headers: dict, params: dict = None):
         self._debug_message("{}: {}".format(method, request_url))
         self._debug_message("Params: {}".format(str(params)))
+
+        self.renew_tokens()
+
         if method == 'post' or method == 'put':
             return requests.request(method, request_url, headers=headers, json=params)
         else:
@@ -140,12 +145,14 @@ class BaseRequest(ABC):
 
         return "Splynx-EA (access_token=" + str(self.__access_token) + ")"
 
-    def __renew_tokens(self):
+    def renew_tokens(self):
         if self.__refresh_token_expiration > time.time() + 5 > self.__access_token_expiration:
             result = self.make_request("GET", self.TOKEN_URL, entity_id=self.__refresh_token, skip_login=True)
             if result:
                 return False
             self.auth_data = self.__response
+
+        return True
 
     def login(self):
         """
@@ -155,9 +162,6 @@ class BaseRequest(ABC):
         After you can save token into your storage an use in future, but this tokens has expiration time.
         See more details about Splynx API authorization on
         page: https://splynx.docs.apiary.io/#introduction/authentication/by-access-token
-
-        Usage:
-            TODO
 
         :return bool: Result of authorization.
         """
@@ -301,10 +305,11 @@ class PersonRequest(BaseRequest):
     Base class for realize logic for auth as person on Splynx as admin or customer.
     """
 
-    def __init__(self, splynx_domain: str, login: str, password: str, debug: bool = False):
+    def __init__(self, splynx_domain: str, login: str = None, password: str = None, debug: bool = False,
+                 auth_data: dict = None):
         self._login = login
         self._password = password
-        super().__init__(splynx_domain, debug=debug)
+        super().__init__(splynx_domain, debug=debug, auth_data=auth_data)
 
     def _auth_request_data(self) -> dict:
         return {
@@ -320,7 +325,7 @@ class CustomerRequest(PersonRequest):
     For authorize need use customer login and password.
 
     Usage:
-        TODO
+        customer = CustomerRequest('http://splynx.domain.com', 'login', 'password')
     """
 
     def _auth_request_data(self) -> dict:
@@ -336,7 +341,7 @@ class AdministratorRequest(PersonRequest):
     For authorize need use customer login and password.
 
     Usage:
-        TODO
+        admin = AdministratorRequest('http://splynx.domain.com', 'admin', 'password')
     """
 
     def _auth_request_data(self) -> dict:
@@ -350,11 +355,12 @@ class ApiKeyRequest(BaseRequest):
     Splynx API helper with auth with API key.
 
     Usage:
-        TODO
+        key = ApiKeyRequest('http://splynx.domain.com', 'key', 'sec')
     """
 
-    def __init__(self, splynx_domain: str, api_key: str, api_secret: str, debug: bool = False):
-        super().__init__(splynx_domain, debug=debug)
+    def __init__(self, splynx_domain: str, api_key: str = None, api_secret: str = None, debug: bool = False,
+                 auth_data: dict = None):
+        super().__init__(splynx_domain, debug=debug, auth_data=auth_data)
         self._api_key = api_key
         self._api_secret = api_secret
         self.__nonce_v = None
