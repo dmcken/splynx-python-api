@@ -54,9 +54,6 @@ class BaseRequest(ABC):
         Method automatically login on system or you can do it manually.
         For manually usage you can use method login or set auth tokens from local storage.
 
-        Usage:
-            TODO
-
         :param str method: HTTP request methods names. Available methods: get, post, put, delete, option, head.
         :param str path: API path. See Splynx API doc https://splynx.docs.apiary.io/ .
         :param dict params: API call params.
@@ -108,7 +105,6 @@ class BaseRequest(ABC):
     def __process_response(self, response: requests.Response):
         self._debug_message("Response test: {}".format(response.text))
         self._debug_message("Response code: {}".format(response.status_code))
-
         if not response.text:
             self.__response = {}
         else:
@@ -146,6 +142,9 @@ class BaseRequest(ABC):
         return "Splynx-EA (access_token=" + str(self.__access_token) + ")"
 
     def renew_tokens(self):
+        if self.__refresh_token_expiration is None or self.__access_token_expiration is None:
+            return False
+
         if self.__refresh_token_expiration > time.time() + 5 > self.__access_token_expiration:
             result = self.make_request("GET", self.TOKEN_URL, entity_id=self.__refresh_token, skip_login=True)
             if result:
@@ -181,9 +180,6 @@ class BaseRequest(ABC):
         See more details about Splynx API authorization on
         page: https://splynx.docs.apiary.io/#introduction/authentication/by-access-token
 
-        Usage:
-            TODO
-
         :return bool: Deactivate token result.
         """
         response = self.make_request("DELETE", self.TOKEN_URL, entity_id=self.__refresh_token)
@@ -212,6 +208,9 @@ class BaseRequest(ABC):
 
     @auth_data.setter
     def auth_data(self, data: dict):
+        if data is None:
+            return
+
         self.__access_token = data.get('access_token')
         self.__access_token_expiration = data.get('access_token_expiration')
         self.__refresh_token = data.get('refresh_token')
