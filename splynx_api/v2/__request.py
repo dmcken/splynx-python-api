@@ -383,6 +383,3 @@ class ApiKeyRequest(BaseRequest):
         time_now = datetime.now()
         self.__nonce_v = round((time.mktime(time_now.timetuple()) + time_now.microsecond / 1000000.0) * 100)
         self._debug_message("Nonce: {}".format(self.__nonce_v))
-
-# TODO make session authorization
-# TODO entity_id union type hinting
