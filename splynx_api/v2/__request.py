@@ -246,8 +246,8 @@ class BaseRequest(ABC):
         """
         Method for make GET requests to Splynx API
         :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
-        :param int|str entity_id:
-        :param dict params:
+        :param int|str|None entity_id:
+        :param dict params: search conditions
         :return:
         """
         return self.make_request('get', path, params=params, entity_id=entity_id)
@@ -256,8 +256,8 @@ class BaseRequest(ABC):
         """
         Method for make DELETE requests to Splynx API
         :param str path: Splynx API path. See more details: https://splynx.docs.apiary.io/
-        :param int|str entity_id:
-        :param dict params:
+        :param int|str|None entity_id:
+        :param dict params: search conditions
         :return:
         """
         return self.make_request('delete', path, entity_id=entity_id, params=params)
