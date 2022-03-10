@@ -64,8 +64,7 @@ For make API requests to Splynx you can use following methods:
   `path` is Splynx API endpoint,
   `entity_id` id of record for load one record from API,
   `params` search [params](https://splynx.docs.apiary.io/#introduction/search,-order,-limit,-and-offset) for make search
-  request to API.
-  ###### Usage:
+  request to API. Usage:
   ~~~
   from splynx_api.v2 import ApiKeyRequest
   
@@ -80,8 +79,7 @@ For make API requests to Splynx you can use following methods:
 
 + `api_call_post(path, params)` - method for make POST requests to Splynx API endpoint. This method has the following arguments:
   `path` is Splynx API endpoint, `params` params for entity creating, for example
-  [list of customers attributes](https://splynx.docs.apiary.io/#reference/customers/customers-collection/create-a-customer).
-  ###### Usage:
+  [list of customers attributes](https://splynx.docs.apiary.io/#reference/customers/customers-collection/create-a-customer). Usage:
   ~~~
   from splynx_api.v2 import ApiKeyRequest
   
@@ -90,18 +88,15 @@ For make API requests to Splynx you can use following methods:
     exit("Error while login")
   
   key.api_call_post("admin/customers/customer", {
-    'main_attributes': {
       'login': 'test',
       'name': 'Test User'
-    }
   })
   print(key.result)
   key.logout()
   ~~~
 + `api_call_put(path, entity_id, params)` - method for make PUT requests to Splynx API. This method has the following arguments:
   `path` is Splynx API endpoint,
-  `params` fields to update on entity with the id in `entity_id` argument.
-  ###### Usage:
+  `params` fields to update on entity with the id in `entity_id` argument. Usage:
   ~~~
   from splynx_api.v2 import ApiKeyRequest
   
@@ -110,17 +105,14 @@ For make API requests to Splynx you can use following methods:
     exit("Error while login")
   
   key.api_call_put("admin/customers/customer", 1, {
-    'main_attributes': {
       'name': 'Test User'
-    }
   })
   print(key.result)
   key.logout()
   ~~~
 
 + `api_call_delete(path, entity_id)` - method for make DELETE requests to Splynx API. This method has the following arguments:
-  `path` is Splynx API endpoint, `entity_id` is id of record for delete.
-  ###### Usage:
+  `path` is Splynx API endpoint, `entity_id` is id of record for delete. Usage:
   ~~~
   from splynx_api.v2 import ApiKeyRequest
   
@@ -135,34 +127,6 @@ For make API requests to Splynx you can use following methods:
   
 + `api_call_options(path)` - method for make OPTIONS requests to Splynx API.
   Method load endpoint `path` attributes list.
-  ###### Usage:
-  ~~~
-  from splynx_api.v2 import ApiKeyRequest
-  
-  key = ApiKeyRequest("http://splynx.domain.com", "key", "sec")
-  if key.login():
-    exit("Error while login")
-  
-  key.api_call_options("admin/customers/customer")
-  print(key.response)
-  key.logout()
-  ~~~
   
 + `api_call_head(path, params)` - method for make HEAD requests to Splynx API.
   Method for load records count on endpoint `path` by [search query](https://splynx.docs.apiary.io/#introduction/search,-order,-limit,-and-offset) on `params`.
-  ###### Usage:
-  ~~~
-  from splynx_api.v2 import ApiKeyRequest
-  
-  key = ApiKeyRequest("http://splynx.domain.com", "key", "sec")
-  if key.login():
-    exit("Error while login")
-  
-  key.api_call_head("admin/customers/customer", {
-    'main_attributes': {
-        'login': ['LIKE', 'durden']
-    }
-  })
-  print(key.response)
-  key.logout()
-  ~~~
