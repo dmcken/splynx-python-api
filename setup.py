@@ -1,11 +1,13 @@
+'''Package setup'''
+
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding='UTF-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name='splynx-api',
-    version='2.0',
+    version='2.0.1',
     scripts=[],
     author="Splynx s.r.o",
     author_email="support@splynx.com",
