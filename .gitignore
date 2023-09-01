@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Egg
+splynx_api.egg-info
+
 # C extensions
 *.so
 
