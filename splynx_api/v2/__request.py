@@ -1,13 +1,27 @@
+'''Splynx v2 API classes
+'''
+
+
+# System imports
+import datetime
 import hashlib
 import hmac
+import http.client
+import logging
 import time
+
 from abc import ABC, abstractmethod
-from datetime import datetime
 from urllib.parse import urlencode
 
+
+# External imports
 import requests
 
+# Local imports
 from .__exceptions import ApiCallError
+
+
+logger = logging.getLogger(__name__)
 
 AUTH_TYPE_API_KEY = 'api_key'
 AUTH_TYPE_CUSTOMER = 'customer'
@@ -22,7 +36,8 @@ class BaseRequest(ABC):
 
     TOKEN_URL = 'admin/auth/tokens'
 
-    def __init__(self, splynx_domain: str, debug: bool = False, auth_data: dict = None):
+    def __init__(self, splynx_domain: str, debug: bool = False,
+                 auth_data: dict = None, timeout:int = 600):
         """
         Init method for Splynx API class
         :param str splynx_domain: Splynx API domain. Example: https://splynx.domain.com
@@ -46,7 +61,10 @@ class BaseRequest(ABC):
         self._debug = debug
         self.auth_data = auth_data
 
-    def make_request(self, method: str, path: str, params: dict = None, content_type: str = 'application/json',
+        self.__timeout = timeout
+
+    def make_request(self, method: str, path: str, params: dict = None,
+                     content_type: str = 'application/json',
                      skip_login: bool = False, entity_id=None):
         """
         Method for make different http requests types.
@@ -54,7 +72,8 @@ class BaseRequest(ABC):
         Method automatically login on system or you can do it manually.
         For manually usage you can use method login or set auth tokens from local storage.
 
-        :param str method: HTTP request methods names. Available methods: get, post, put, delete, option, head.
+        :param str method: HTTP request methods names. Available methods: get,
+            post, put, delete, option, head.
         :param str path: API path. See Splynx API doc https://splynx.docs.apiary.io/ .
         :param dict params: API call params.
         :param content_type: API call content type. Default value: `application/json`.
@@ -74,7 +93,9 @@ class BaseRequest(ABC):
         except requests.exceptions.RequestException as exception:
             self.__response = {}
             self.__result = False
-            raise ApiCallError("Error while make API call. Error: {}".format(str(exception)))
+            raise ApiCallError(
+                f"Error while make API call. Error: {exception}"
+            ) from exception
 
         self.__process_response(response)
 
@@ -89,22 +110,35 @@ class BaseRequest(ABC):
         return request_url
 
     def __do_requests(self, request_url: str, method: str, headers: dict, params: dict = None):
-        self._debug_message("{}: {}".format(method, request_url))
-        self._debug_message("Params: {}".format(str(params)))
+        self._debug_message(f"{method}: {request_url}")
+        self._debug_message(f"Params: {params}")
 
         self.renew_tokens()
 
         if method == 'post' or method == 'put':
-            return requests.request(method, request_url, headers=headers, json=params)
+            return requests.request(
+                method,
+                request_url,
+                headers=headers,
+                json=params,
+                timeout=self.__timeout,
+            )
         else:
             if params:
                 request_url = request_url + "?" + urlencode(params)
 
-            return requests.request(method, request_url, headers=headers)
+            return requests.request(
+                method,
+                request_url,
+                headers=headers,
+                timeout=self.__timeout,
+            )
 
     def __process_response(self, response: requests.Response):
-        self._debug_message("Response test: {}".format(response.text))
-        self._debug_message("Response code: {}".format(response.status_code))
+        '''Process the response from the API.
+        '''
+        self._debug_message(f"Response test: {response.text}")
+        self._debug_message(f"Response code: {response.status_code}")
         if not response.text:
             self.__response = {}
         else:
@@ -114,10 +148,14 @@ class BaseRequest(ABC):
 
     @staticmethod
     def __get_result_by_status_code(response: requests.Response) -> bool:
-        if (response.request.method == 'GET' or response.request.method == 'OPTION') and response.status_code == 200:
+        '''Determine the result value from status code.
+        '''
+        if response.request.method in ['GET','OPTION'] and \
+            response.status_code == 200:
             return True
 
-        if (response.request.method == 'DELETE' or response.request.method == 'HEAD') and response.status_code == 204:
+        if response.request.method in ['DELETE','HEAD'] and \
+            response.status_code == 204:
             return True
 
         if response.request.method == 'POST' and response.status_code == 201:
@@ -128,7 +166,10 @@ class BaseRequest(ABC):
 
         return False
 
-    def __get_request_header(self, content_type: str = 'application/json', skip_login: bool = False) -> dict:
+    def __get_request_header(self, content_type: str = 'application/json',
+                             skip_login: bool = False) -> dict:
+        '''Get the request header.
+        '''
         return {
             'authorization': self.__get_auth_header(skip_login),
             'content-type': content_type,
@@ -136,17 +177,24 @@ class BaseRequest(ABC):
         }
 
     def __get_auth_header(self, skip_login: bool = False) -> str:
+        '''Get the authentication header'''
         if skip_login is False and self.__access_token is None:
             self.login()
 
         return "Splynx-EA (access_token=" + str(self.__access_token) + ")"
 
     def renew_tokens(self):
+        '''Renew an expiered token'''
         if self.__refresh_token_expiration is None or self.__access_token_expiration is None:
             return False
 
         if self.__refresh_token_expiration > time.time() + 5 > self.__access_token_expiration:
-            result = self.make_request("GET", self.TOKEN_URL, entity_id=self.__refresh_token, skip_login=True)
+            result = self.make_request(
+                "GET",
+                self.TOKEN_URL,
+                entity_id=self.__refresh_token,
+                skip_login=True
+            )
             if result:
                 return False
             self.auth_data = self.__response
@@ -158,7 +206,8 @@ class BaseRequest(ABC):
         Method for authorize on Splynx system API.
 
         This method make api call to Splynx system and generate API tokens.
-        After you can save token into your storage an use in future, but this tokens has expiration time.
+        After you can save token into your storage an use in future, but these
+        tokens have an expiration time.
         See more details about Splynx API authorization on
         page: https://splynx.docs.apiary.io/#introduction/authentication/by-access-token
 
@@ -198,6 +247,8 @@ class BaseRequest(ABC):
 
     @property
     def auth_data(self) -> dict:
+        '''Fetch authentication data.
+        '''
         return {
             'access_token': self.__access_token,
             'access_token_expiration': self.__access_token_expiration,
@@ -208,6 +259,8 @@ class BaseRequest(ABC):
 
     @auth_data.setter
     def auth_data(self, data: dict):
+        '''Set authentication data.
+        '''
         if data is None:
             return
 
@@ -219,19 +272,37 @@ class BaseRequest(ABC):
 
     @property
     def result(self):
+        '''Fetch result'''
         return self.__result
 
     @property
     def response(self):
+        '''Fetch raw response?'''
         return self.__response
 
     @property
     def debug(self):
+        '''Internal debugging'''
         return self._debug
 
     @debug.setter
     def debug(self, value: bool):
+        '''Internal debugging'''
         self._debug = value
+
+    def enable_http_debug(self) -> None:
+        '''Enable HTTP debugging'''
+        http.client.HTTPConnection.debuglevel = 1
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+
+    def disable_debug(self) -> None:
+        '''Disable HTTP debugging'''
+        http.client.HTTPConnection.debuglevel = 0
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.WARNING)
+        requests_log.propagate = False
 
     def _debug_message(self, message: str = ""):
         """
@@ -304,8 +375,11 @@ class PersonRequest(BaseRequest):
     Base class for realize logic for auth as person on Splynx as admin or customer.
     """
 
-    def __init__(self, splynx_domain: str, login: str = None, password: str = None, debug: bool = False,
+    def __init__(self, splynx_domain: str, login: str = None,
+                 password: str = None, debug: bool = False,
                  auth_data: dict = None):
+        '''Constructor
+        '''
         self._login = login
         self._password = password
         super().__init__(splynx_domain, debug=debug, auth_data=auth_data)
@@ -357,8 +431,11 @@ class ApiKeyRequest(BaseRequest):
         key = ApiKeyRequest('http://splynx.domain.com', 'key', 'sec')
     """
 
-    def __init__(self, splynx_domain: str, api_key: str = None, api_secret: str = None, debug: bool = False,
+    def __init__(self, splynx_domain: str, api_key: str = None,
+                 api_secret: str = None, debug: bool = False,
                  auth_data: dict = None):
+        '''Constructor
+        '''
         super().__init__(splynx_domain, debug=debug, auth_data=auth_data)
         self._api_key = api_key
         self._api_secret = api_secret
@@ -374,12 +451,21 @@ class ApiKeyRequest(BaseRequest):
         }
 
     def __signature(self) -> str:
-        st = "%s%s" % (self.__nonce_v, self._api_key)
-        signature_hash = hmac.new(bytes(self._api_secret, 'latin-1'), bytes(st, 'latin-1'),
-                                  hashlib.sha256).hexdigest()
+        '''Full signature creation.
+        '''
+        signature_str = f"{self.__nonce_v}{self._api_key}"
+        signature_hash = hmac.new(
+            bytes(self._api_secret, 'latin-1'),
+            bytes(signature_str, 'latin-1'),
+            hashlib.sha256
+        ).hexdigest()
         return signature_hash.upper()
 
-    def __nonce(self):
-        time_now = datetime.now()
-        self.__nonce_v = round((time.mktime(time_now.timetuple()) + time_now.microsecond / 1000000.0) * 100)
-        self._debug_message("Nonce: {}".format(self.__nonce_v))
+    def __nonce(self) -> None:
+        '''Generate and save to the object the nonce value.
+        '''
+        time_now = datetime.datetime.now()
+        self.__nonce_v = round(
+            (time.mktime(time_now.timetuple()) + time_now.microsecond / 1000000.0) * 100
+        )
+        self._debug_message(f"Nonce: {self.__nonce_v}")
